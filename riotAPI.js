@@ -159,7 +159,7 @@ app.get('/testing', async (req, res) => {
   res.send(ChampionsGlobalObject);
 });
 //STARTING SERVER
-app.listen(PORT, async () => {
+app.listen(process.env.PORT || PORT, async () => {
   await init();
   console.log(await prepareChampionsData());
 });
