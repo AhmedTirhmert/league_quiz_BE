@@ -5,7 +5,8 @@
   "main": "riotAPI.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "serve": "nodemon ./riotAPI.js"
+    "serve": "nodemon ./riotAPI.js",
+    "start": "nodemon ./riotAPI.js"
   },
   "author": "Ahmed Tirhmert",
   "license": "ISC",
