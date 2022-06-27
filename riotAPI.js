@@ -2,25 +2,19 @@
 
 const express = require('express');
 const cors = require('cors');
+const firebase = require('./mixins/firebase');
 const fs = require('fs');
 const app = express();
 const PORT = 5000;
+let patchVersion;
 const axios = require('axios').create({
-  baseURL: 'http://ddragon.leagueoflegends.com/cdn',
+  baseURL: `http://ddragon.leagueoflegends.com/cdn/`,
 });
-
-const splashBaseURL =
-  'http://ddragon.leagueoflegends.com/cdn/img/champion/splash';
-const loadingBaseURL =
-  'http://ddragon.leagueoflegends.com/cdn/img/champion/loading';
-const tileBaseURL =
-  'http://ddragon.leagueoflegends.com/cdn/11.16.1/img/champion';
-const spellBaseURL = 'http://ddragon.leagueoflegends.com/cdn/11.16.1/img/spell';
-const itemBaseURL = 'https://ddragon.leagueoflegends.com/cdn/11.17.1/img/item';
+const axiosBase = require('axios');
+let splashBaseURL, loadingBaseURL, tileBaseURL, spellBaseURL,itemBaseURL;
 
 let ChampionsGlobalObject = new Object();
 let ItemsGlobalArray;
-let patchVersion = '11.21.1'
 app.use(cors());
 app.options('*', cors());
 app.use('/tiles', express.static(__dirname + '/Champions/Images/tiles'));
@@ -34,10 +28,20 @@ app.use('/passives', express.static(__dirname + '/Champions/Images/passive'));
 
 //FUNCTIONS
 const init = async () => {
-  const champions = await axios.get('11.16.1/data/en_US/champion.json');
-  const items = await axios.get('11.16.1/data/en_US/item.json');
+  patchVersion = await getCurrentPatchVersion();
+  setBaseURLs()
+  await setAxiosBaseURL();
+  const champions = await axios.get('data/en_US/champion.json');
+  const items = await axios.get('data/en_US/item.json');
   ChampionsGlobalObject = champions.data.data;
   ItemsGlobalArray = loadItemsArray(items.data.data);
+};
+const setBaseURLs = () => {
+  splashBaseURL = `http://ddragon.leagueoflegends.com/cdn/img/champion/splash`;
+  loadingBaseURL = `http://ddragon.leagueoflegends.com/cdn/img/champion/loading`;
+  tileBaseURL = `http://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion`;
+  spellBaseURL = `http://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/spell`;
+  itemBaseURL = `https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/item`;
 };
 const loadItemsArray = (itemsObject) => {
   let temp = [];
@@ -48,6 +52,9 @@ const loadItemsArray = (itemsObject) => {
     }
   }
   return temp;
+};
+const setAxiosBaseURL = () => {
+  axios.defaults.baseURL += `${patchVersion}`;
 };
 const loadChampionsNames = () => {
   let champions = ChampionsGlobalObject;
@@ -61,14 +68,18 @@ const loadChampionsNames = () => {
 };
 const champData = async (championName) => {
   try {
-    let response = await axios.get(
-      `11.16.1/data/en_US/champion/${championName}.json`
-    );
+    let response = await axios.get(`data/en_US/champion/${championName}.json`);
     const data = response.data.data[championName];
     return data;
   } catch (error) {
     console.log(error);
   }
+};
+const getCurrentPatchVersion = async () => {
+  let response = await axiosBase.get(
+    'https://ddragon.leagueoflegends.com/api/versions.json'
+  );
+  return response.data[0];
 };
 const readChampionObjectByIndex = async (index) => {
   let allChampionsNames = await loadChampionsNames();
@@ -147,7 +158,7 @@ const randomAbility = async () => {
         image: `${spellBaseURL}/${championFullData.spells[abilityIndex].image.full}`,
       },
     };
-    spells.push({spell:spell,answer:answer});
+    spells.push({ spell: spell, answer: answer });
     i++;
   }
   return spells;
@@ -181,7 +192,8 @@ app.get('/', async (req, res) => {
   let championName = await loadChampionsNames();
   let championData = await champData(championName[0]);
   let data = champSkinsDataObject(championData);
-  res.send(data);
+  let x = await firebase.fireStore.collection('championsData').get();
+  res.send(x);
 });
 app.get('/championsData', async (req, res) => {
   res.send(await prepareChampionsData());
