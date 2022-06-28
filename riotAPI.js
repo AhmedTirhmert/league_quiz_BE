@@ -11,7 +11,7 @@ const axios = require('axios').create({
   baseURL: `http://ddragon.leagueoflegends.com/cdn/`,
 });
 const axiosBase = require('axios');
-let splashBaseURL, loadingBaseURL, tileBaseURL, spellBaseURL,itemBaseURL;
+let splashBaseURL, loadingBaseURL, tileBaseURL, spellBaseURL, itemBaseURL;
 
 let ChampionsGlobalObject = new Object();
 let ItemsGlobalArray;
@@ -29,7 +29,7 @@ app.use('/passives', express.static(__dirname + '/Champions/Images/passive'));
 //FUNCTIONS
 const init = async () => {
   patchVersion = await getCurrentPatchVersion();
-  setBaseURLs()
+  setBaseURLs();
   await setAxiosBaseURL();
   const champions = await axios.get('data/en_US/champion.json');
   const items = await axios.get('data/en_US/item.json');
@@ -177,7 +177,7 @@ const randomItem = () => {
   };
   return item;
 };
-const prepareItemsData = () => {
+const prepareItemsData = async () => {
   return ItemsGlobalArray.map((item) => {
     let tempItem = {
       key: item.key,
@@ -186,14 +186,54 @@ const prepareItemsData = () => {
     return tempItem;
   });
 };
-
+const randomQuote = async () => {
+  const championsData = await firebase.fireStore
+    .collection('championsData')
+    .get();
+  let availableChampionsNames = championsData._docs().map((doc) => doc.id);
+  const randomChampionIndex = Math.floor(
+    Math.random() * availableChampionsNames.length
+  );
+  const championId = availableChampionsNames[randomChampionIndex];
+  const championData = await firebase.fireStore
+    .collection('championsData')
+    .doc(championId)
+    .get();
+  let championQuotes = championData._fieldsProto.quotes.arrayValue.values;
+  const randomQuoteIndex = Math.floor(Math.random() * championQuotes.length);
+  const quote = championQuotes[randomQuoteIndex].stringValue;
+  return {
+    quote: quote,
+    champion : championId
+  };
+};
+const randomVocal = async () => {
+  const championsData = await firebase.fireStore
+    .collection('championsData')
+    .get();
+  let availableChampionsNames = championsData._docs().map((doc) => doc.id);
+  const randomChampionIndex = Math.floor(
+    Math.random() * availableChampionsNames.length
+  );
+  const championId = availableChampionsNames[randomChampionIndex];
+  const championData = await firebase.fireStore
+    .collection('championsData')
+    .doc(championId)
+    .get();
+  let championVocals = championData._fieldsProto.vocals.arrayValue.values;
+  const randomVocalIndex = Math.floor(Math.random() * championVocals.length);
+  const vocal = championVocals[randomVocalIndex].stringValue;
+  return {
+    quote: vocal,
+    champion : championId
+  };
+};
 // ROUTUNG
 app.get('/', async (req, res) => {
   let championName = await loadChampionsNames();
   let championData = await champData(championName[0]);
   let data = champSkinsDataObject(championData);
-  let x = await firebase.fireStore.collection('championsData').get();
-  res.send(x);
+  res.send(data);
 });
 app.get('/championsData', async (req, res) => {
   res.send(await prepareChampionsData());
@@ -214,6 +254,12 @@ app.get('/randomItem', async (req, res) => {
 });
 app.get('/loadAutoCompleteItems', async (req, res) => {
   res.send(prepareItemsData());
+});
+app.get('/randomQuote', async (req, res) => {
+  res.send(await randomQuote());
+});
+app.get('/randomVocal', async (req, res) => {
+  res.send(await randomVocal());
 });
 //STARTING SERVER
 app.listen(process.env.PORT || PORT, async () => {
